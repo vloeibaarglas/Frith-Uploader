@@ -1,6 +1,6 @@
 # Frith Uploader
 
-Minimal Android media uploader for [frith](https://github.com/vloeibaarglas/frith) servers. Pick an image or share from any app.
+Minimal Android media uploader for [frith](https://github.com/vloeibaarglas/frith) servers. Pick any file (images, video, PDF, HTML, …) or share from any app.
 
 ## Stack
 
