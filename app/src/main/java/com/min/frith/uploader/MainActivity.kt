@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -25,6 +26,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Link
@@ -206,6 +208,9 @@ fun UploadScreen(intent: Intent? = null) {
         }
     }
 
+    val selectedMime = remember(imageUri) { imageUri?.let { context.contentResolver.getType(it) } ?: "" }
+    val isImage = selectedMime.startsWith("image/", ignoreCase = true)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -245,7 +250,7 @@ fun UploadScreen(intent: Intent? = null) {
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Upload images",
+                    text = "Upload files",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -265,7 +270,7 @@ fun UploadScreen(intent: Intent? = null) {
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = "Image",
+                        text = "File",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
@@ -280,19 +285,43 @@ fun UploadScreen(intent: Intent? = null) {
                                 .clip(RoundedCornerShape(12.dp))
                                 .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                         ) {
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(imageUri)
-                                    .size(Size.ORIGINAL)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = "Selected image",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
+                            if (isImage) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(context)
+                                        .data(imageUri)
+                                        .size(Size.ORIGINAL)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Selected file",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Column(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Description,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(56.dp),
+                                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                                    )
+                                    Spacer(modifier = Modifier.height(10.dp))
+                                    Text(
+                                        text = queryDisplayName(context, imageUri!!) ?: "Selected file",
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            }
                             Box(modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                                FilledTonalIconButton(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.size(36.dp)) {
-                                    Icon(Icons.Default.Image, contentDescription = "Change image", modifier = Modifier.size(18.dp))
+                                FilledTonalIconButton(onClick = { imagePicker.launch("*/*") }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Image, contentDescription = "Change file", modifier = Modifier.size(18.dp))
                                 }
                             }
                         }
@@ -304,13 +333,13 @@ fun UploadScreen(intent: Intent? = null) {
                                 .clip(RoundedCornerShape(12.dp))
                                 .border(2.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { imagePicker.launch("image/*") },
+                                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) { imagePicker.launch("*/*") },
                             contentAlignment = Alignment.Center
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                                Icon(Icons.Default.Description, contentDescription = null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Tap to select an image", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Tap to select a file", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text("or share from another app", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
                             }
@@ -330,7 +359,7 @@ fun UploadScreen(intent: Intent? = null) {
                         return@Button
                     }
                     if (imageUri == null) {
-                        errorMessage = "Please select an image"
+                        errorMessage = "Please select a file"
                         return@Button
                     }
                     isUploading = true
@@ -339,7 +368,7 @@ fun UploadScreen(intent: Intent? = null) {
 
                     scope.launch {
                         try {
-                            val result = uploadImage(context, imageUri!!, authToken, apiBaseUrl, uploadPath)
+                            val result = uploadFile(context, imageUri!!, authToken, apiBaseUrl, uploadPath)
                             resultLink = result
                             val historyJson = prefs.getString("history", "[]") ?: "[]"
                             val arr = JSONArray(historyJson)
@@ -396,7 +425,7 @@ fun UploadScreen(intent: Intent? = null) {
                             OutlinedButton(
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("Image URL", link))
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Link", link))
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 },
                                 modifier = Modifier.weight(1f),
@@ -498,7 +527,7 @@ fun HistoryScreen() {
                                 Icons.Default.ContentCopy, contentDescription = "Copy",
                                 modifier = Modifier.size(18.dp).clickable {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    clipboard.setPrimaryClip(ClipData.newPlainText("Image URL", url))
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Link", url))
                                     Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
                                 },
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -697,17 +726,20 @@ fun SettingsScreen() {
     }
 }
 
-suspend fun uploadImage(context: Context, uri: Uri, token: String, apiBaseUrl: String, uploadPath: String = "/api/upload"): String {
+suspend fun uploadFile(context: Context, uri: Uri, token: String, apiBaseUrl: String, uploadPath: String = "/api/upload"): String {
     return withContext(Dispatchers.IO) {
-        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-        val extension = when {
-            mimeType.contains("png") -> "png"
-            mimeType.contains("gif") -> "gif"
-            mimeType.contains("webp") -> "webp"
-            else -> "jpg"
-        }
+        val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
 
-        val tempFile = File(context.cacheDir, "upload_image.$extension")
+        // Use the real filename when we can get it, so frith preserves the
+        // original name (UPLOAD_ORIGINAL_NAME) and validates the extension
+        // against its allow-list.
+        val displayName = queryDisplayName(context, uri)
+        val ext = displayName?.substringAfterLast('.', "")?.lowercase()
+            ?.takeIf { it.isNotBlank() && it.all(Char::isLetterOrDigit) }
+            ?: extensionFromMime(mimeType)
+        val partName = displayName ?: "upload.$ext"
+
+        val tempFile = File(context.cacheDir, "frith_upload_${System.currentTimeMillis()}.$ext")
         context.contentResolver.openInputStream(uri)?.use { input ->
             FileOutputStream(tempFile).use { output ->
                 input.copyTo(output)
@@ -718,7 +750,7 @@ suspend fun uploadImage(context: Context, uri: Uri, token: String, apiBaseUrl: S
 
         val requestBody = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
-            .addFormDataPart("file", tempFile.name, tempFile.asRequestBody(mimeType.toMediaTypeOrNull()))
+            .addFormDataPart("file", partName, tempFile.asRequestBody(mimeType.toMediaTypeOrNull()))
             .build()
 
         val request = Request.Builder()
@@ -764,4 +796,26 @@ suspend fun uploadImage(context: Context, uri: Uri, token: String, apiBaseUrl: S
             responseBody
         }
     }
+}
+
+// queryDisplayName reads a content URI's display name via the OpenableColumns
+// contract, falling back to null if the provider doesn't expose one.
+private fun queryDisplayName(context: Context, uri: Uri): String? {
+    return try {
+        context.contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
+            }
+    } catch (_: Exception) {
+        null
+    }
+}
+
+// extensionFromMime maps a MIME type to a best-effort file extension, falling
+// back to "bin" for unknown/opaque types.
+private fun extensionFromMime(mime: String): String {
+    val sub = mime.substringAfter('/', "").substringBefore(';').lowercase()
+    if (sub == "jpeg") return "jpg"
+    if (sub.isNotBlank() && sub.all(Char::isLetterOrDigit)) return sub
+    return "bin"
 }
