@@ -1,6 +1,6 @@
 # Frith Uploader
 
-Minimal Android media uploader for [frith](https://github.com/vloeibaarglas/frith) servers. Pick any file (images, video, PDF, HTML, …) and send it to your own frith server.
+Minimal Android media uploader for [Frith](https://github.com/vloeibaarglas/Frith) servers. Pick any file (images, video, PDF, HTML, …) and send it to your own Frith server.
 
 ## Stack
 
@@ -25,7 +25,7 @@ Kotlin, Jetpack Compose, Material 3, OkHttp, Coil
 
 ## Upload API
 
-Matches frith 1:1:
+Matches Frith 1:1:
 
 - `POST {server}/{path}` (default `/api/upload`) — multipart form field `file`
 - Auth: `Authorization: Bearer <token>`
